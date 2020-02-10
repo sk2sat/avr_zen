@@ -1,0 +1,24 @@
+const builtin = @import("builtin");
+const ioport = @import("ioport.zen");
+
+const LOOP_NUM = 100000;
+
+pub export fn main() noreturn {
+    const portb = @intToPtr(*volatile ioport.Port, 0x23);
+
+    portb.DIR = 0xff;           // ポートBのピンを全て出力に設定
+
+    while (true) {
+        portb.DATA = (1 << 5);  // 5番ピンをHIGHに設定
+        delay_loop(LOOP_NUM);   // 人間様のために待つ
+        portb.DATA = 0;         // 全てのピンをLOWに設定
+        delay_loop(LOOP_NUM);
+    }
+}
+
+fn delay_loop(num: u32) void {
+    var i: u32 = 0;
+    while (i < num) : (i += 1) {
+        asm volatile ("nop");
+    }
+}

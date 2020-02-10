@@ -1,0 +1,8 @@
+pub const Port = packed struct {
+    const Self = @This();
+
+    // registers
+    pub IN: u8,
+    pub DIR: u8,
+    pub DATA: u8,
+};
