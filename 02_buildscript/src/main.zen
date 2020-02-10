@@ -1,0 +1,23 @@
+const builtin = @import("builtin");
+
+const PORTB = @intToPtr(*volatile u8, 0x25);
+const DDRB = @intToPtr(*volatile u8, 0x24);
+const LOOP_NUM = 100000;
+
+pub export fn main() noreturn {
+    DDRB.* = 0xff;              // ポートBのピンを全て出力に設定
+
+    while (true) {
+        PORTB.* = (1 << 5);     // 5番ピンをHIGHに設定
+        delay_loop(LOOP_NUM);   // 人間様のために待つ
+        PORTB.* = 0;            // 全てのピンをLOWに設定
+        delay_loop(LOOP_NUM);
+    }
+}
+
+fn delay_loop(num: u32) void {
+    var i: u32 = 0;
+    while (i < num) : (i += 1) {
+        asm volatile ("nop");
+    }
+}
