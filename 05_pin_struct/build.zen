@@ -1,0 +1,65 @@
+const builtin = @import("builtin");
+const std = @import("std");
+const Builder = std.build.Builder;
+const Target = std.Target;
+
+pub fn build(b: *Builder) !void {
+    const mode = builtin.Mode.ReleaseSmall; // デフォだと0x00にpanicが生えちゃう
+        // b.standardReleaseOptions();
+    const target = try Target.parse("avr-freestanding-eabi");
+
+    const firmware = b.addObject("firmware", "src/main.zen");
+    firmware.setBuildMode(mode);
+    firmware.setOutputDir("zen-cache");
+    firmware.setTheTarget(target);
+    //firmware.setLinkerScriptPath("avr-default.ld");
+
+    const gen_elf = b.addSystemCommand(&[_][]const u8{
+        "avr-ld",
+        "-o", "zen-cache/firmware.elf",
+        firmware.getOutputPath(),
+    });
+
+    const gen_hex = b.addSystemCommand(&[_][]const u8{
+        "avr-objcopy",
+        "-j", ".text",
+        "-j", ".data",
+        "-O", "ihex",
+        "-R", ".eeprom",
+        "zen-cache/firmware.elf",
+        "zen-cache/firmware.hex",
+    });
+
+    const check_size = b.addSystemCommand(&[_][]const u8{
+        "avr-size",
+        "--mcu=atmega328p",
+        "-C",
+        "--format=avr",
+        firmware.getOutputPath(),
+    });
+
+    gen_elf.step.dependOn(&firmware.step);
+    gen_hex.step.dependOn(&gen_elf.step);
+    check_size.step.dependOn(&gen_hex.step);
+    b.default_step.dependOn(&check_size.step);
+    
+    // add subcommand
+    const cmd_flash = b.step("flash", "Flash the firmware into Arduino Uno");
+
+    {
+        // avrdude -q -V -p atmega328p -C /etc/avrdude.conf -D -c arduino -b 115200 -P $1 -U flash:w:firmware.hex:
+        const avrdude = b.addSystemCommand(&[_][]const u8{
+            "avrdude",
+            "-q", "-V",
+            "-p", "atmega328p",
+            "-C", "/etc/avrdude.conf",
+            "-D",
+            "-c", "arduino",
+            "-b", "115200",
+            "-P", "/dev/ttyUSB0",
+            "-U", "flash:w:zen-cache/firmware.hex:i",
+        });
+        avrdude.step.dependOn(&gen_hex.step);
+        cmd_flash.dependOn(&avrdude.step);
+    }
+}

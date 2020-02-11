@@ -1,0 +1,46 @@
+pub const Port = packed struct {
+    const Self = @This();
+
+    // registers
+    IN: u8,
+    DIR: u8,
+    DATA: u8,
+
+    fn getPin(self: *volatile Self, pin: u3) Pin {
+        return Pin {
+            .port = self,
+            .num = pin,
+        };
+    }
+
+    fn setOutput(self: *volatile Self, pin: u3) void {
+        self.DIR |= (@is(u8,1) << pin);
+    }
+
+    fn setHigh(self: *volatile Self, pin: u3) void {
+        self.DATA |= (@is(u8,1) << pin);
+    }
+
+    fn setLow(self: *volatile Self, pin: u3) void {
+        self.DATA &= ~(@is(u8,1) << pin);
+    }
+};
+
+pub const Pin = struct {
+    const Self = @This();
+
+    port: *volatile Port,
+    num: u3,
+
+    fn setOutput(self: Self) void {
+        self.port.setOutput(self.num);
+    }
+
+    fn setHigh(self: Self) void {
+        self.port.setHigh(self.num);
+    }
+
+    fn setLow(self: Self) void {
+        self.port.setLow(self.num);
+    }
+};
